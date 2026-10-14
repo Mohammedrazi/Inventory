@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Store Inventory</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Inventory">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f1f4f8;color:#1f2937}
+  .wrap{max-width:460px;margin:0 auto;padding:16px}
+  .card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:14px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#6b7280;font-size:13px;margin-bottom:16px}
+  label{display:block;font-size:13px;font-weight:bold;margin:12px 0 4px}
+  input{width:100%;padding:14px;font-size:18px;border:1px solid #cbd5e1;border-radius:8px}
+  input:focus{outline:2px solid #2563eb;border-color:#2563eb}
+  input[readonly]{background:#f8fafc;color:#111}
+  button{width:100%;padding:15px;font-size:17px;font-weight:bold;border:0;border-radius:8px;
+         background:#2563eb;color:#fff;margin-top:16px;cursor:pointer}
+  button:disabled{background:#94a3b8}
+  button.secondary{background:#e2e8f0;color:#334155;margin-top:8px;font-size:14px;padding:10px}
+  .msg{padding:10px 12px;border-radius:8px;font-size:14px;margin-top:12px;display:none}
+  .err{background:#fee2e2;color:#991b1b}.ok{background:#dcfce7;color:#166534}.info{background:#fef9c3;color:#854d0e}
+  .row2{display:flex;gap:10px}.row2>div{flex:1}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .top button{width:auto;margin:0;padding:8px 14px;font-size:13px}
+  .hide{display:none}
+  .listhead{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .listhead input{font-size:15px;padding:10px}
+  .listhead button{width:auto;margin:0;padding:10px 14px;font-size:13px}
+  .entry{border-bottom:1px solid #e5e7eb;padding:10px 0}
+  .entry:last-child{border-bottom:0}
+  .e1{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+  .e1 b{word-break:break-all}
+  .e2{color:#6b7280;font-size:12px;margin-top:2px}
+  .e3{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+  .e3 input{font-size:16px;padding:8px;width:110px}
+  .e3 button{width:auto;margin:0;padding:8px 14px;font-size:13px}
+  .small{font-size:12px;color:#6b7280;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div id="loginView" class="card">
+    <h1>Store Inventory</h1>
+    <div class="sub">Please log in</div>
+    <label>User ID</label>
+    <input id="uid" inputmode="numeric" autocomplete="off">
+    <label>Password</label>
+    <input id="pwd" type="password" inputmode="numeric" autocomplete="off">
+    <button id="loginBtn" onclick="doLogin()">Login</button>
+    <div id="loginMsg" class="msg err"></div>
+  </div>
+
+  <!-- APP -->
+  <div id="appView" class="hide">
+    <div class="card">
+      <div class="top"><h1>Stock Count</h1><button class="secondary" onclick="logout()">Logout</button></div>
+      <div class="sub">Enter Article / PLU code, then press Enter</div>
+
+      <label>Article / PLU Code</label>
+      <input id="code" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter'){lookup()}">
+      <button class="secondary" onclick="lookup()">Search</button>
+
+      <label>Description</label>
+      <input id="desc" readonly>
+      <div class="row2">
+        <div><label>UOM</label><input id="uom" readonly></div>
+        <div><label>Department</label><input id="dept" readonly></div>
+      </div>
+
+      <label>Physical Quantity in Store</label>
+      <input id="qty" type="number" inputmode="decimal" min="0" step="any" disabled
+             onkeydown="if(event.key==='Enter'){save()}">
+
+      <button id="saveBtn" onclick="save()" disabled>SAVE</button>
+      <div id="msg" class="msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="top"><b style="font-size:15px">Saved entries</b></div>
+      <div class="small" id="count"></div>
+      <div class="listhead" style="margin-top:8px">
+        <input id="q" placeholder="Search article / description" autocomplete="off">
+        <button class="secondary" onclick="loadList()">Refresh</button>
+      </div>
+      <div id="list"></div>
+      <div id="listMsg" class="msg err"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== SETTINGS (change here) ======
+const USER_ID  = '4622';
+const PASSWORD = '4622';
+// Paste the Web app link from Apps Script (Deploy > Manage deployments > Web app URL, ends with /exec)
+const API_URL  = 'https://script.google.com/macros/s/AKfycbybMIre7i3lSRLkkqFKWpRflMVJC0-RvefSbL3jT9fg_vgV7mddGBNivE8X9WT6M-ck7w/exec';
+// ====================================
+
+let loggedIn = false, current = null, entries = [];
+const $ = id => document.getElementById(id);
+
+function show(el, text, cls) { el.className = 'msg ' + cls; el.textContent = text; el.style.display = 'block'; }
+function hideMsg() { $('msg').style.display = 'none'; }
+function errText(e) { return (e && e.message ? e.message : String(e)).replace('Error: ', ''); }
+
+/* ---- data link to the Google Sheet (data only) ---- */
+async function readJson(r) {
+  const t = await r.text();
+  let j;
+  try { j = JSON.parse(t); }
+  catch (e) { throw new Error('Google sent a web page instead of data. In Apps Script use Deploy > Manage deployments > pencil > New version, with "Who has access" = Anyone.'); }
+  if (!j || !j.ok) throw new Error((j && j.error) || 'Sheet error');
+  return j;
+}
+function checkUrl() {
+  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) throw new Error('Web app link is missing. Paste it into API_URL at the top of this file.');
+}
+async function apiGet(params) {
+  checkUrl();
+  const qs = new URLSearchParams({ ...params, _: Date.now() }).toString();
+  let r;
+  try { r = await fetch(API_URL + '?' + qs); }
+  catch (e) { throw new Error('Cannot reach Google Sheet. Check internet and that the Web app access is "Anyone".'); }
+  return readJson(r);
+}
+async function apiPost(body) {
+  checkUrl();
+  let r;
+  try { r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }); }
+  catch (e) { throw new Error('Cannot reach Google Sheet. Check internet and that the Web app access is "Anyone".'); }
+  return readJson(r);
+}
+
+/* ---- login (checked in this page) ---- */
+function doLogin() {
+  if ($('uid').value.trim() === USER_ID && $('pwd').value === PASSWORD) {
+    loggedIn = true;
+    $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
+    $('code').focus(); loadList();
+  } else show($('loginMsg'), 'Wrong User ID or Password.', 'err');
+}
+$('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+function logout() { loggedIn = false; location.reload(); }
+
+/* ---- count entry ---- */
+function clearItem() {
+  current = null;
+  ['desc','uom','dept'].forEach(i => $(i).value = '');
+  $('qty').value = ''; $('qty').disabled = true; $('saveBtn').disabled = true;
+}
+
+async function lookup() {
+  hideMsg();
+  const c = $('code').value.trim();
+  if (!c) return;
+  clearItem();
+  try {
+    const r = await apiGet({ action: 'lookup', code: c });
+    if (!r.found) { show($('msg'), 'Article / PLU not found.', 'err'); $('code').select(); return; }
+    current = r.item;
+    $('desc').value = r.item.description; $('uom').value = r.item.uom; $('dept').value = r.item.department;
+    $('qty').disabled = false; $('saveBtn').disabled = false; $('qty').focus();
+    if (r.existing) show($('msg'), 'Already saved: ' + r.existing.qty + ' ' + r.existing.uom + ' (' + r.existing.when + '). Saving adds a new entry - to change the old one use "Saved entries" below.', 'info');
+  } catch (e) { show($('msg'), errText(e), 'err'); }
+}
+
+async function save() {
+  if (!loggedIn || !current) return;
+  const q = $('qty').value;
+  if (q === '' || Number(q) < 0) { show($('msg'), 'Enter a valid quantity.', 'err'); return; }
+  $('saveBtn').disabled = true;
+  try {
+    const r = await apiPost({ action: 'save', code: current.article, qty: q });
+    show($('msg'), 'Saved: ' + r.entry.article + ' - ' + r.entry.qty + ' ' + r.entry.uom, 'ok');
+    loadList();
+    $('code').value = ''; clearItem(); $('code').focus();
+  } catch (e) { show($('msg'), errText(e), 'err'); $('saveBtn').disabled = false; }
+}
+
+/* ---- saved entries: view + change ---- */
+async function loadList() {
+  $('listMsg').style.display = 'none';
+  try {
+    const r = await apiGet({ action: 'list', q: $('q').value.trim() });
+    entries = r.entries;
+    $('count').textContent = r.total + ' saved entr' + (r.total === 1 ? 'y' : 'ies') + (r.total > entries.length ? ' (showing latest ' + entries.length + ')' : '');
+    renderList();
+  } catch (e) { show($('listMsg'), errText(e), 'err'); }
+}
+let qTimer = null;
+$('q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(loadList, 450); });
+
+function renderList() {
+  const box = $('list');
+  box.textContent = '';
+  if (!entries.length) { const d = document.createElement('div'); d.className = 'small'; d.textContent = 'No saved entries yet.'; box.appendChild(d); return; }
+  entries.forEach(en => box.appendChild(entryEl(en)));
+}
+
+function entryEl(en) {
+  const wrap = document.createElement('div'); wrap.className = 'entry';
+  const e1 = document.createElement('div'); e1.className = 'e1';
+  const left = document.createElement('div');
+  const b = document.createElement('b'); b.textContent = en.article;
+  left.append(b, ' ', en.description);
+  const right = document.createElement('div'); right.style.whiteSpace = 'nowrap'; right.textContent = en.qty + ' ' + en.uom;
+  e1.append(left, right);
+  const e2 = document.createElement('div'); e2.className = 'e2'; e2.textContent = en.when + (en.department ? ' · ' + en.department : '');
+  const e3 = document.createElement('div'); e3.className = 'e3';
+  const edit = document.createElement('button'); edit.className = 'secondary'; edit.textContent = 'Change quantity'; edit.style.marginTop = '0';
+  edit.onclick = () => editMode(wrap, en);
+  e3.appendChild(edit);
+  wrap.append(e1, e2, e3);
+  return wrap;
+}
+
+function editMode(wrap, en) {
+  const e3 = wrap.querySelector('.e3'); e3.textContent = '';
+  const inp = document.createElement('input'); inp.type = 'number'; inp.inputMode = 'decimal'; inp.min = '0'; inp.step = 'any'; inp.value = en.qty;
+  const ok = document.createElement('button'); ok.textContent = 'Save';
+  const cancel = document.createElement('button'); cancel.className = 'secondary'; cancel.textContent = 'Cancel'; cancel.style.marginTop = '0';
+  const note = document.createElement('div'); note.className = 'small'; note.style.marginTop = '0';
+  const doSave = async () => {
+    if (inp.value === '' || Number(inp.value) < 0) { note.textContent = 'Enter a valid quantity.'; return; }
+    ok.disabled = true; note.textContent = 'Saving...';
+    try {
+      const r = await apiPost({ action: 'update', row: en.row, article: en.article, ts: en.ts, qty: inp.value });
+      const i = entries.indexOf(en); if (i >= 0) entries[i] = r.entry;
+      renderList();
+    } catch (e) { note.textContent = errText(e); ok.disabled = false; }
+  };
+  ok.onclick = doSave; cancel.onclick = () => renderList();
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
+  e3.append(inp, ok, cancel, note);
+  inp.focus(); inp.select();
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
