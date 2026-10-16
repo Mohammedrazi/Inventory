@@ -12,16 +12,16 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
 <style>
- 
   *{box-sizing:border-box}
   body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f1f4f8;color:#1f2937}
   .wrap{max-width:460px;margin:0 auto;padding:16px}
+  .wrap.wide{max-width:900px}
   .card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:14px}
   h1{font-size:20px;margin:0 0 4px}
   .sub{color:#6b7280;font-size:13px;margin-bottom:16px}
   label{display:block;font-size:13px;font-weight:bold;margin:12px 0 4px}
-  input{width:100%;padding:14px;font-size:18px;border:1px solid #cbd5e1;border-radius:8px}
-  input:focus{outline:2px solid #2563eb;border-color:#2563eb}
+  input,select{width:100%;padding:14px;font-size:18px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
+  input:focus,select:focus{outline:2px solid #2563eb;border-color:#2563eb}
   input[readonly]{background:#f8fafc;color:#111}
   button{width:100%;padding:15px;font-size:17px;font-weight:bold;border:0;border-radius:8px;
          background:#2563eb;color:#fff;margin-top:16px;cursor:pointer}
@@ -34,21 +34,79 @@
   .top button{width:auto;margin:0;padding:8px 14px;font-size:13px}
   .hide{display:none}
   .listhead{display:flex;gap:8px;align-items:center;margin-bottom:6px}
-  .listhead input{font-size:15px;padding:10px}
+  .listhead input,.listhead select{font-size:15px;padding:10px}
   .listhead button{width:auto;margin:0;padding:10px 14px;font-size:13px}
   .entry{border-bottom:1px solid #e5e7eb;padding:10px 0}
   .entry:last-child{border-bottom:0}
   .e1{display:flex;justify-content:space-between;gap:8px;font-size:14px}
   .e1 b{word-break:break-all}
   .e2{color:#6b7280;font-size:12px;margin-top:2px}
+  .e2 .pendtag{color:#b45309;font-weight:bold}
+  .e2 .failtag{color:#b91c1c;font-weight:bold}
   .e3{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
   .e3 input{font-size:16px;padding:8px;width:110px}
   .e3 button{width:auto;margin:0;padding:8px 14px;font-size:13px}
   .small{font-size:12px;color:#6b7280;margin-top:8px}
+
+  /* tabs */
+  .tabs{display:flex;gap:6px;margin-bottom:10px;background:#e2e8f0;padding:4px;border-radius:10px}
+  .tabs button{margin:0;padding:10px 4px;font-size:13px;background:transparent;color:#475569;border-radius:8px}
+  .tabs button.active{background:#fff;color:#2563eb;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .tabpane{display:none}.tabpane.active{display:block}
+
+  /* upload status bar */
+  .syncbar{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:14px}
+  .syncbar.good{background:#dcfce7;color:#166534}
+  .syncbar.pend{background:#fef9c3;color:#854d0e}
+  .syncbar.bad{background:#fee2e2;color:#991b1b}
+  .syncbar button{width:auto;margin:0;padding:6px 12px;font-size:12px}
+
+  /* print tab */
+  .filters{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .filters .full{grid-column:1/-1}
+  .filters input,.filters select{font-size:15px;padding:10px}
+  .sheet{background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:18px;margin-top:14px;overflow-x:auto}
+
+  /* printout (shared by preview + print) */
+  .po{font-family:Arial,Helvetica,sans-serif;color:#000;font-size:12px}
+  .po h2{text-align:center;font-size:20px;margin:0 0 10px;text-transform:uppercase;letter-spacing:1px}
+  .po .meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;margin-bottom:10px;font-size:12px}
+  .po table{width:100%;border-collapse:collapse}
+  .po th,.po td{border:1px solid #000;padding:5px 6px;text-align:left;vertical-align:top}
+  .po th{background:#e5e7eb}
+  .po td.n,.po th.n{text-align:right;white-space:nowrap}
+  .po thead{display:table-header-group}
+  .po tr{page-break-inside:avoid}
+  .po .sign{display:flex;justify-content:space-between;gap:40px;margin-top:50px;page-break-inside:avoid}
+  .po .sign div{flex:1;text-align:center}
+  .po .sign .line{border-top:1px solid #000;margin-bottom:4px;padding-top:4px;font-weight:bold}
+  .po .sign .dt{margin-top:18px;border-top:1px solid #000;padding-top:3px;font-size:11px}
+
+
+  /* button click effect */
+  button{position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;
+         transition:transform .08s ease,filter .15s ease,box-shadow .15s ease}
+  button:hover:not(:disabled){filter:brightness(1.07);box-shadow:0 3px 8px rgba(0,0,0,.15)}
+  button:active:not(:disabled){transform:scale(.95);filter:brightness(.9);box-shadow:none}
+  .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.55);transform:scale(0);
+          animation:rip .55s ease-out;pointer-events:none}
+  button.secondary .ripple,.tabs button .ripple{background:rgba(37,99,235,.28)}
+  @keyframes rip{to{transform:scale(3);opacity:0}}
+
+  .appfoot{text-align:center;font-size:12px;color:#6b7280;padding:4px 16px 20px}
+  .appfoot .ver{font-size:11px;color:#9ca3af;margin-top:2px}
+  #printOnly{display:none}
+  @media print{
+    @page{size:A4;margin:12mm}
+    body{background:#fff}
+    .wrap{display:none!important}
+    .appfoot{display:none!important}
+    #printOnly{display:block}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="mainWrap">
 
   <!-- LOGIN -->
   <div id="loginView" class="card">
@@ -64,41 +122,103 @@
 
   <!-- APP -->
   <div id="appView" class="hide">
-    <div class="card">
-      <div class="top"><h1>Stock Count</h1><button class="secondary" onclick="logout()">Logout</button></div>
-      <div class="sub">Enter Article / PLU code, then press Enter</div>
 
-      <label>Article / PLU Code</label>
-      <input id="code" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter'){lookup()}">
-      <button class="secondary" onclick="lookup()">Search</button>
-
-      <label>Description</label>
-      <input id="desc" readonly>
-      <div class="row2">
-        <div><label>UOM</label><input id="uom" readonly></div>
-        <div><label>Department</label><input id="dept" readonly></div>
-      </div>
-
-      <label>Physical Quantity in Store</label>
-      <input id="qty" type="number" inputmode="decimal" min="0" step="any" disabled
-             onkeydown="if(event.key==='Enter'){save()}">
-
-      <button id="saveBtn" onclick="save()" disabled>SAVE</button>
-      <div id="msg" class="msg"></div>
+    <div class="tabs">
+      <button class="active" data-tab="count" onclick="showTab('count')">Count</button>
+      <button data-tab="saved" onclick="showTab('saved')">Saved</button>
+      <button data-tab="articles" onclick="showTab('articles')">Articles</button>
+      <button data-tab="print" onclick="showTab('print')">Print</button>
     </div>
 
-    <div class="card">
-      <div class="top"><b style="font-size:15px">Saved entries</b></div>
-      <div class="small" id="count"></div>
-      <div class="listhead" style="margin-top:8px">
-        <input id="q" placeholder="Search article / description" autocomplete="off">
-        <button class="secondary" onclick="loadList()">Refresh</button>
-      </div>
-      <div id="list"></div>
-      <div id="listMsg" class="msg err"></div>
+    <div class="syncbar good" id="syncBar">
+      <span id="syncText">All data uploaded to sheet</span>
+      <button id="syncBtn" class="secondary hide" onclick="sync(true)">Sync now</button>
     </div>
+
+    <!-- TAB: COUNT -->
+    <div id="tab-count" class="tabpane active">
+      <div class="card">
+        <div class="top"><h1>Stock Count</h1><button class="secondary" onclick="logout()">Logout</button></div>
+        <div class="sub">Enter Article / PLU code, then press Enter</div>
+        <div class="small" id="artStatus" style="margin:-8px 0 8px"></div>
+
+        <label>Article / PLU Code</label>
+        <input id="code" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter'){lookup()}">
+        <button class="secondary" onclick="lookup()">Search</button>
+
+        <label>Description</label>
+        <input id="desc" readonly>
+        <div class="row2">
+          <div><label>UOM</label><input id="uom" readonly></div>
+          <div><label>Department</label><input id="dept" readonly></div>
+        </div>
+
+        <label>Physical Quantity in Store</label>
+        <input id="qty" type="number" inputmode="decimal" min="0" step="any" disabled
+               onkeydown="if(event.key==='Enter'){save()}">
+
+        <button id="saveBtn" onclick="save()" disabled>SAVE</button>
+        <div id="msg" class="msg"></div>
+      </div>
+    </div>
+
+    <!-- TAB: SAVED ENTRIES -->
+    <div id="tab-saved" class="tabpane">
+      <div class="card">
+        <div class="top"><b style="font-size:15px">Saved entries</b></div>
+        <div class="small" id="count"></div>
+        <div class="listhead" style="margin-top:8px">
+          <input id="q" placeholder="Search article / description" autocomplete="off">
+          <button class="secondary" onclick="loadList(true)">Refresh</button>
+        </div>
+        <div id="list"></div>
+        <button id="moreSaved" class="secondary hide" onclick="savedShown+=100;renderList()">Show more</button>
+        <div id="listMsg" class="msg err"></div>
+      </div>
+    </div>
+
+    <!-- TAB: ALL ARTICLES -->
+    <div id="tab-articles" class="tabpane">
+      <div class="card">
+        <div class="top"><b style="font-size:15px">All articles</b>
+          <button class="secondary" onclick="loadArticles(true)">Refresh</button></div>
+        <div class="small" id="artCount"></div>
+        <label>Search (name, article code, PLU or department)</label>
+        <input id="aq" style="font-size:15px;padding:10px" placeholder="Type to search" autocomplete="off">
+        <label>Department</label>
+        <select id="adept" style="font-size:15px;padding:10px"><option value="">All departments</option></select>
+        <div id="artList" style="margin-top:8px"></div>
+        <button id="moreBtn" class="secondary hide" onclick="showMoreArticles()">Show more</button>
+        <div id="artMsg" class="msg err"></div>
+      </div>
+    </div>
+
+    <!-- TAB: PRINT -->
+    <div id="tab-print" class="tabpane">
+      <div class="card">
+        <b style="font-size:15px">Print - Physical Inventory Data</b>
+        <div class="filters" style="margin-top:8px">
+          <div><label>From date</label><input type="date" id="pFrom"></div>
+          <div><label>To date</label><input type="date" id="pTo"></div>
+          <div class="full"><label>Department</label>
+            <select id="pDept"><option value="">All departments</option></select></div>
+        </div>
+        <button onclick="buildPrint()">Show Preview</button>
+        <button id="printBtn" class="secondary" onclick="window.print()" disabled>Print</button>
+        <div id="pMsg" class="msg err"></div>
+        <div class="sheet hide" id="preview"><div class="po" id="previewBody"></div></div>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<!-- printed copy (only visible when printing) -->
+<div class="appfoot">
+  <div>Website created by Mohammed Razi &middot; Mark &amp; Save &ndash; Qatar</div>
+  <div class="ver">Version: fast mode v2</div>
+</div>
+<div id="printOnly" class="po"></div>
 
 <script>
 // ====== SETTINGS (change here) ======
@@ -108,39 +228,101 @@ const PASSWORD = '4622';
 const API_URL  = 'https://script.google.com/macros/s/AKfycbybMIre7i3lSRLkkqFKWpRflMVJC0-RvefSbL3jT9fg_vgV7mddGBNivE8X9WT6M-ck7w/exec';
 // ====================================
 
-let loggedIn = false, current = null, entries = [];
+/*
+  How it works (fast mode):
+  - All articles are downloaded once and kept on this device -> searching a code is instant.
+  - SAVE writes to this device immediately and goes to the next article.
+  - Saved counts are uploaded to the "Inventory" sheet in the background (queue).
+    If the internet is slow or off, nothing is lost: it uploads when the connection is back.
+*/
+
+let loggedIn = false, current = null;
+let entries = [];            // saved counts (newest first). {cid, article, description, uom, department, mc, qty, when, row, synced, error}
+let queue = [];              // waiting uploads: {op:'save',cid} or {op:'update',article,when,qty,row}
+let articles = [], artMap = {}, articlesLoaded = false, artShown = 100, artMatches = [];
+let savedShown = 100, syncing = false, lastErr = '', changeCounter = 0;
 const $ = id => document.getElementById(id);
 
 function show(el, text, cls) { el.className = 'msg ' + cls; el.textContent = text; el.style.display = 'block'; }
 function hideMsg() { $('msg').style.display = 'none'; }
 function errText(e) { return (e && e.message ? e.message : String(e)).replace('Error: ', ''); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function pad(n) { return String(n).padStart(2, '0'); }
+function nowFull() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
+function todayStr() { return nowFull().slice(0, 10); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-/* ---- data link to the Google Sheet (data only) ---- */
+/* ---- device storage ---- */
+function persist() {
+  try { localStorage.setItem('inv_store_v1', JSON.stringify({ entries: entries.slice(0, 5000), queue: queue })); } catch (e) {}
+}
+function persistArticles() {
+  try { localStorage.setItem('inv_articles_v1', JSON.stringify(articles)); } catch (e) {}
+}
+function setArticles(list) {
+  articles = list; artMap = {};
+  list.forEach(a => { artMap[a.article] = a; });
+  list.forEach(a => { if (a.plu && !artMap[a.plu]) artMap[a.plu] = a; });
+  articlesLoaded = list.length > 0;
+}
+function loadLocal() {
+  try {
+    const s = JSON.parse(localStorage.getItem('inv_store_v1') || 'null');
+    if (s) { entries = s.entries || []; queue = s.queue || []; }
+    const a = JSON.parse(localStorage.getItem('inv_articles_v1') || 'null');
+    if (a && a.length) setArticles(a);
+  } catch (e) {}
+}
+
+/* ---- data link to the Google Sheet ---- */
 async function readJson(r) {
   const t = await r.text();
   let j;
   try { j = JSON.parse(t); }
-  catch (e) { throw new Error('Google sent a web page instead of data. In Apps Script use Deploy > Manage deployments > pencil > New version, with "Who has access" = Anyone.'); }
+  catch (e) { const er = new Error('Google sent a web page instead of data. In Apps Script use Deploy > Manage deployments > pencil > New version, with "Who has access" = Anyone.'); er.net = true; throw er; }
   if (!j || !j.ok) throw new Error((j && j.error) || 'Sheet error');
   return j;
 }
 function checkUrl() {
-  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) throw new Error('Web app link is missing. Paste it into API_URL at the top of this file.');
+  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) { const er = new Error('Web app link is missing. Paste it into API_URL at the top of this file.'); er.net = true; throw er; }
 }
-async function apiGet(params) {
+function netErr(msg) { const er = new Error(msg || 'No connection to Google Sheet.'); er.net = true; return er; }
+let currentAbort = null;
+// every request gives up after 25 s (then the upload is retried automatically)
+async function apiCall(url, opts, ms) {
   checkUrl();
+  const ctl = new AbortController();
+  currentAbort = ctl;
+  const t = setTimeout(() => ctl.abort(), ms || 25000);
+  try {
+    let r;
+    try { r = await fetch(url, { ...opts, signal: ctl.signal }); }
+    catch (e) { throw netErr(ctl.signal.aborted ? 'No reply from Google Sheet.' : ''); }
+    try { return await readJson(r); }
+    catch (e) { if (ctl.signal.aborted) throw netErr('No reply from Google Sheet.'); throw e; }
+  } finally { clearTimeout(t); }
+}
+function apiGet(params) {
   const qs = new URLSearchParams({ ...params, _: Date.now() }).toString();
-  let r;
-  try { r = await fetch(API_URL + '?' + qs); }
-  catch (e) { throw new Error('Cannot reach Google Sheet. Check internet and that the Web app access is "Anyone".'); }
-  return readJson(r);
+  return apiCall(API_URL + '?' + qs, {}, params.action === 'ping' ? 15000 : 40000);
 }
-async function apiPost(body) {
-  checkUrl();
-  let r;
-  try { r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }); }
-  catch (e) { throw new Error('Cannot reach Google Sheet. Check internet and that the Web app access is "Anyone".'); }
-  return readJson(r);
+function apiPost(body) {
+  return apiCall(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }, 25000);
+}
+
+/* ---- tabs ---- */
+function showTab(name) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  $('mainWrap').classList.toggle('wide', name === 'print' || name === 'articles');
+  if (name === 'saved') renderList();
+  if (name === 'articles') renderArticles();
+  if (name === 'print') {
+    if (!$('pFrom').value) $('pFrom').value = todayStr();
+    if (!$('pTo').value) $('pTo').value = todayStr();
+    fillDeptLists();
+  }
+  if (name === 'count') $('code').focus();
 }
 
 /* ---- login (checked in this page) ---- */
@@ -148,11 +330,30 @@ function doLogin() {
   if ($('uid').value.trim() === USER_ID && $('pwd').value === PASSWORD) {
     loggedIn = true;
     $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
-    $('code').focus(); loadList();
+    $('code').focus();
+    startApp();
   } else show($('loginMsg'), 'Wrong User ID or Password.', 'err');
 }
 $('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 function logout() { loggedIn = false; location.reload(); }
+
+function startApp() {
+  loadLocal();
+  entries.forEach(e => { if (!e.synced && !e.error && !queue.some(q => q.op === 'save' && q.cid === e.cid)) queue.push({ op: 'save', cid: e.cid }); });
+  fillDeptLists(); renderArticles(); renderList(); updateSyncUI(); setArtStatus();
+  loadArticles(true, true);          // refresh article list in the background
+  loadList(false);                   // upload anything waiting, then refresh saved list
+  setInterval(() => { if (queue.length) sync(); }, 20000);
+  apiGet({ action: 'ping' }).catch(() => {});                                   // wake the sheet script now
+  setInterval(() => { apiGet({ action: 'ping' }).catch(() => {}); }, 170000);  // and keep it awake
+  window.addEventListener('online', () => sync());
+}
+
+function setArtStatus() {
+  $('artStatus').textContent = articlesLoaded
+    ? articles.length + ' articles ready on this device - search is instant'
+    : 'Loading articles...';
+}
 
 /* ---- count entry ---- */
 function clearItem() {
@@ -166,47 +367,136 @@ async function lookup() {
   const c = $('code').value.trim();
   if (!c) return;
   clearItem();
-  try {
-    const r = await apiGet({ action: 'lookup', code: c });
-    if (!r.found) { show($('msg'), 'Article / PLU not found.', 'err'); $('code').select(); return; }
-    current = r.item;
-    $('desc').value = r.item.description; $('uom').value = r.item.uom; $('dept').value = r.item.department;
-    $('qty').disabled = false; $('saveBtn').disabled = false; $('qty').focus();
-    if (r.existing) show($('msg'), 'Already saved: ' + r.existing.qty + ' ' + r.existing.uom + ' (' + r.existing.when + '). Saving adds a new entry - to change the old one use "Saved entries" below.', 'info');
-  } catch (e) { show($('msg'), errText(e), 'err'); }
+  let item = artMap[c];
+  let existing = null;
+  if (!item && !articlesLoaded) {           // first run, list not on device yet: ask the sheet
+    try {
+      const r = await apiGet({ action: 'lookup', code: c });
+      if (r.found) item = r.item;
+    } catch (e) { show($('msg'), errText(e), 'err'); return; }
+  }
+  if (!item) { show($('msg'), 'Article / PLU not found. If it is new, open the Articles tab and press Refresh.', 'err'); $('code').select(); return; }
+  current = item;
+  $('desc').value = item.description; $('uom').value = item.uom; $('dept').value = item.department;
+  $('qty').disabled = false; $('saveBtn').disabled = false; $('qty').focus();
+  existing = entries.find(en => en.article === item.article);
+  if (existing) show($('msg'), 'Already saved: ' + existing.qty + ' ' + existing.uom + ' (' + existing.when + '). Saving adds a new entry - to change the old one use the "Saved" tab.', 'info');
 }
 
-async function save() {
+function save() {
   if (!loggedIn || !current) return;
   const q = $('qty').value;
   if (q === '' || Number(q) < 0) { show($('msg'), 'Enter a valid quantity.', 'err'); return; }
-  $('saveBtn').disabled = true;
-  try {
-    const r = await apiPost({ action: 'save', code: current.article, qty: q });
-    show($('msg'), 'Saved: ' + r.entry.article + ' - ' + r.entry.qty + ' ' + r.entry.uom, 'ok');
-    loadList();
-    $('code').value = ''; clearItem(); $('code').focus();
-  } catch (e) { show($('msg'), errText(e), 'err'); $('saveBtn').disabled = false; }
+  const en = {
+    cid: uid(), article: current.article, description: current.description, uom: current.uom,
+    department: current.department, mc: current.mc || '', qty: Number(q), when: nowFull(),
+    row: null, synced: false, error: ''
+  };
+  entries.unshift(en);
+  queue.push({ op: 'save', cid: en.cid });
+  changeCounter++; persist();
+  show($('msg'), 'Saved: ' + en.article + ' - ' + en.qty + ' ' + en.uom, 'ok');
+  $('code').value = ''; clearItem(); $('code').focus();
+  updateSyncUI(); syncSoon();
 }
 
-/* ---- saved entries: view + change ---- */
-async function loadList() {
-  $('listMsg').style.display = 'none';
+/* ---- background upload to the Inventory sheet ---- */
+let syncTimer = null;
+function syncSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(() => sync(), 250); }   // waits a moment so quick saves go up together
+
+let retryTimer = null, retryDelay = 3000;
+async function sync(manual) {
+  if (!loggedIn) return;
+  if (syncing) { if (manual && currentAbort) currentAbort.abort(); return; }   // "Retry now": cancel a stuck upload, it restarts by itself
+  if (!queue.length) { if (manual) updateSyncUI(); return; }
+  clearTimeout(retryTimer);
+  syncing = true; lastErr = ''; updateSyncUI();
   try {
-    const r = await apiGet({ action: 'list', q: $('q').value.trim() });
-    entries = r.entries;
-    $('count').textContent = r.total + ' saved entr' + (r.total === 1 ? 'y' : 'ies') + (r.total > entries.length ? ' (showing latest ' + entries.length + ')' : '');
-    renderList();
-  } catch (e) { show($('listMsg'), errText(e), 'err'); }
+    while (queue.length) {
+      const first = queue[0];
+      if (first.op === 'save') {
+        const batch = []; let used = 0;
+        while (used < queue.length && queue[used].op === 'save' && batch.length < 50) {
+          const en = entries.find(x => x.cid === queue[used].cid);
+          if (en) batch.push({ en: en, sentQty: en.qty });
+          used++;
+        }
+        if (batch.length) {
+          const r = await apiPost({ action: 'saveBatch', entries: batch.map(b => ({ article: b.en.article, qty: b.sentQty, when: b.en.when, description: b.en.description, uom: b.en.uom, department: b.en.department, mc: b.en.mc })) });
+          batch.forEach((b, k) => {
+            const res = r.results[k];
+            if (res && res.ok) {
+              b.en.synced = true; b.en.error = ''; b.en.row = res.entry.row;
+              if (b.en.qty !== b.sentQty) queue.push({ op: 'update', article: b.en.article, when: b.en.when, qty: b.en.qty, row: b.en.row });
+            } else { b.en.error = (res && res.error) || 'Not saved'; }
+          });
+        }
+        queue.splice(0, used);
+      } else {
+        try {
+          await apiPost({ action: 'update', article: first.article, when: first.when, qty: first.qty, row: first.row });
+        } catch (e) {
+          if (e.net) throw e;
+          const en = entries.find(x => x.article === first.article && x.when === first.when);
+          if (en) en.error = errText(e);
+        }
+        queue.shift();
+      }
+      changeCounter++; persist(); updateSyncUI(); renderListIfVisible();
+    }
+    retryDelay = 3000;
+  } catch (e) {
+    lastErr = errText(e);
+    retryDelay = Math.min(retryDelay * 2, 30000);
+  }
+  syncing = false; persist(); updateSyncUI(); renderListIfVisible();
+  if (queue.length) { clearTimeout(retryTimer); retryTimer = setTimeout(() => sync(), retryDelay); }
+}
+
+function updateSyncUI() {
+  const n = queue.length, failed = entries.filter(e => e.error).length;
+  const bar = $('syncBar'), t = $('syncText'), b = $('syncBtn');
+  let cls = 'good', txt = 'All data uploaded to sheet';
+  if (syncing) { cls = 'pend'; txt = 'Uploading to sheet... (' + n + ' left)'; }
+  else if (n) { cls = lastErr ? 'bad' : 'pend'; txt = n + ' waiting to upload' + (lastErr ? ' - ' + lastErr : ''); }
+  else if (failed) { cls = 'bad'; }
+  if (failed) txt += ' · ' + failed + ' failed (see Saved tab)';
+  bar.className = 'syncbar ' + cls; t.textContent = txt;
+  b.textContent = syncing ? 'Retry now' : 'Sync now';
+  b.classList.toggle('hide', !n);
+}
+
+/* ---- saved entries: view + change (from this device) ---- */
+async function loadList(manual) {
+  $('listMsg').style.display = 'none';
+  await sync();
+  if (queue.length) { if (manual) show($('listMsg'), 'Some entries are still waiting to upload - list not refreshed yet.', 'info'); return; }
+  const before = changeCounter;
+  try {
+    const r = await apiGet({ action: 'list', q: '', all: '1' });
+    if (changeCounter !== before) return;        // something changed while loading; keep the newer local data
+    const server = (r.entries || []).map(e => ({
+      cid: 'srv|' + e.row, article: e.article, description: e.description, uom: e.uom,
+      department: e.department, mc: e.mc || '', qty: e.qty, when: e.when, row: e.row, synced: true, error: ''
+    }));
+    entries = entries.filter(e => !e.synced).concat(server);
+    persist(); fillDeptLists(); renderList(); updateSyncUI();
+  } catch (e) { if (manual) show($('listMsg'), errText(e), 'err'); }
 }
 let qTimer = null;
-$('q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(loadList, 450); });
+$('q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(() => { savedShown = 100; renderList(); }, 200); });
+
+function renderListIfVisible() { if ($('tab-saved').classList.contains('active')) renderList(); }
 
 function renderList() {
+  const term = $('q').value.trim().toLowerCase();
+  const rows = term ? entries.filter(e => String(e.article).toLowerCase().includes(term) || String(e.description).toLowerCase().includes(term)) : entries;
   const box = $('list');
   box.textContent = '';
-  if (!entries.length) { const d = document.createElement('div'); d.className = 'small'; d.textContent = 'No saved entries yet.'; box.appendChild(d); return; }
-  entries.forEach(en => box.appendChild(entryEl(en)));
+  $('count').textContent = rows.length + ' saved entr' + (rows.length === 1 ? 'y' : 'ies') + (rows.length > savedShown ? ' (showing latest ' + savedShown + ')' : '');
+  $('moreSaved').classList.toggle('hide', rows.length <= savedShown);
+  if (!rows.length) { const d = document.createElement('div'); d.className = 'small'; d.textContent = 'No saved entries yet.'; box.appendChild(d); return; }
+  rows.slice(0, savedShown).forEach(en => box.appendChild(entryEl(en)));
 }
 
 function entryEl(en) {
@@ -217,7 +507,10 @@ function entryEl(en) {
   left.append(b, ' ', en.description);
   const right = document.createElement('div'); right.style.whiteSpace = 'nowrap'; right.textContent = en.qty + ' ' + en.uom;
   e1.append(left, right);
-  const e2 = document.createElement('div'); e2.className = 'e2'; e2.textContent = en.when + (en.department ? ' · ' + en.department : '');
+  const e2 = document.createElement('div'); e2.className = 'e2';
+  e2.append(en.when + (en.department ? ' · ' + en.department : ''));
+  if (en.error) { const s = document.createElement('span'); s.className = 'failtag'; s.textContent = ' · NOT SAVED: ' + en.error; e2.appendChild(s); }
+  else if (!en.synced) { const s = document.createElement('span'); s.className = 'pendtag'; s.textContent = ' · waiting to upload'; e2.appendChild(s); }
   const e3 = document.createElement('div'); e3.className = 'e3';
   const edit = document.createElement('button'); edit.className = 'secondary'; edit.textContent = 'Change quantity'; edit.style.marginTop = '0';
   edit.onclick = () => editMode(wrap, en);
@@ -232,20 +525,136 @@ function editMode(wrap, en) {
   const ok = document.createElement('button'); ok.textContent = 'Save';
   const cancel = document.createElement('button'); cancel.className = 'secondary'; cancel.textContent = 'Cancel'; cancel.style.marginTop = '0';
   const note = document.createElement('div'); note.className = 'small'; note.style.marginTop = '0';
-  const doSave = async () => {
+  const doSave = () => {
     if (inp.value === '' || Number(inp.value) < 0) { note.textContent = 'Enter a valid quantity.'; return; }
-    ok.disabled = true; note.textContent = 'Saving...';
-    try {
-      const r = await apiPost({ action: 'update', row: en.row, article: en.article, ts: en.ts, qty: inp.value });
-      const i = entries.indexOf(en); if (i >= 0) entries[i] = r.entry;
-      renderList();
-    } catch (e) { note.textContent = errText(e); ok.disabled = false; }
+    const nq = Number(inp.value);
+    en.qty = nq;
+    if (en.synced) queue.push({ op: 'update', article: en.article, when: en.when, qty: nq, row: en.row });
+    changeCounter++; persist(); renderList(); updateSyncUI(); syncSoon();
   };
   ok.onclick = doSave; cancel.onclick = () => renderList();
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
   e3.append(inp, ok, cancel, note);
   inp.focus(); inp.select();
 }
+
+/* ---- all articles ---- */
+function fillDeptLists() {
+  const set = new Set();
+  articles.forEach(a => a.department && set.add(a.department));
+  entries.forEach(e => e.department && set.add(e.department));
+  const depts = [...set].sort();
+  ['adept', 'pDept'].forEach(id => {
+    const sel = $(id), keep = sel.value;
+    sel.innerHTML = '<option value="">All departments</option>' + depts.map(d => '<option>' + esc(d) + '</option>').join('');
+    sel.value = depts.includes(keep) ? keep : '';
+  });
+}
+
+async function loadArticles(force, quiet) {
+  $('artMsg').style.display = 'none';
+  if (!articlesLoaded) $('artCount').textContent = 'Loading articles...';
+  try {
+    const r = await apiGet({ action: 'articles' });
+    setArticles((r.items || r.articles || []).map(a => ({
+      article: String(a.article), description: String(a.description || ''), uom: String(a.uom || ''),
+      department: String(a.department || ''), mc: String(a.mc || ''), plu: String(a.plu || '')
+    })));
+    persistArticles(); fillDeptLists(); renderArticles(); setArtStatus();
+  } catch (e) {
+    if (!articlesLoaded) $('artCount').textContent = '';
+    if (!quiet) show($('artMsg'), errText(e), 'err');
+  }
+}
+
+function renderArticles(keepShown) {
+  if (!keepShown) artShown = 100;
+  const q = $('aq').value.trim().toLowerCase(), d = $('adept').value;
+  artMatches = articles.filter(a =>
+    (!d || a.department === d) &&
+    (!q || a.article.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.department.toLowerCase().includes(q) || (a.plu && a.plu.toLowerCase().includes(q))));
+  const box = $('artList'); box.textContent = '';
+  artMatches.slice(0, artShown).forEach(a => {
+    const w = document.createElement('div'); w.className = 'entry';
+    const e1 = document.createElement('div'); e1.className = 'e1';
+    const left = document.createElement('div'); const b = document.createElement('b'); b.textContent = a.article;
+    left.append(b, ' ', a.description);
+    const right = document.createElement('div'); right.style.whiteSpace = 'nowrap'; right.textContent = a.uom;
+    e1.append(left, right);
+    const e2 = document.createElement('div'); e2.className = 'e2'; e2.textContent = a.department + (a.plu ? ' · PLU ' + a.plu : '');
+    w.append(e1, e2); box.appendChild(w);
+  });
+  if (articlesLoaded && !artMatches.length) { const x = document.createElement('div'); x.className = 'small'; x.textContent = 'No articles found.'; box.appendChild(x); }
+  if (articlesLoaded) $('artCount').textContent = artMatches.length + ' of ' + articles.length + ' articles' + (artMatches.length > artShown ? ' (showing ' + artShown + ')' : '');
+  $('moreBtn').classList.toggle('hide', artMatches.length <= artShown);
+}
+function showMoreArticles() { artShown += 100; renderArticles(true); }
+let aTimer = null;
+$('aq').addEventListener('input', () => { clearTimeout(aTimer); aTimer = setTimeout(() => renderArticles(), 200); });
+$('adept').addEventListener('change', () => renderArticles());
+
+/* ---- print: Physical Inventory Data (built from this device, instant) ---- */
+function buildPrint() {
+  $('pMsg').style.display = 'none';
+  const from = $('pFrom').value, to = $('pTo').value, dept = $('pDept').value;
+  if (from && to && from > to) { show($('pMsg'), 'From date is after To date.', 'err'); return; }
+
+  const rows = entries.filter(en => {
+    const day = String(en.when || '').slice(0, 10);
+    return !en.error && (!from || day >= from) && (!to || day <= to) && (!dept || en.department === dept);
+  }).sort((a, b) =>
+    (a.department || '').localeCompare(b.department || '') ||
+    String(a.article).localeCompare(String(b.article)) ||
+    String(a.when).localeCompare(String(b.when)));
+
+  const waiting = rows.filter(e => !e.synced).length;
+  if (waiting) show($('pMsg'), waiting + ' of these entries are not uploaded to the sheet yet (they are included in the printout).', 'info');
+
+  const uniq = new Set(rows.map(x => x.article)).size;
+  const range = (from || '...') + (to && to !== from ? ' to ' + to : '');
+  const body = rows.map((en, i) =>
+    '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(en.article) + '</td><td>' + esc(en.description) +
+    '</td><td class="n">' + esc(en.qty) + ' ' + esc(en.uom) + '</td><td>' + esc(en.when) + '</td></tr>').join('');
+
+  const html =
+    '<h2>Physical Inventory Data</h2>' +
+    '<div class="meta"><div><b>Date:</b> ' + esc(range) + '</div>' +
+    '<div><b>Department:</b> ' + esc(dept || 'All') + '</div>' +
+    '<div><b>Total Articles:</b> ' + uniq + (rows.length !== uniq ? ' (' + rows.length + ' entries)' : '') + '</div>' +
+    '<div><b>Printing Time:</b> ' + esc(nowFull().slice(0, 16)) + '</div></div>' +
+    '<table><thead><tr><th class="n">#</th><th>Article</th><th>Article Description</th><th class="n">Physical Quantity</th><th>Scanning Time</th></tr></thead><tbody>' +
+    (body || '<tr><td colspan="5" style="text-align:center">No entries for this selection</td></tr>') +
+    '</tbody></table>' +
+    '<div class="sign"><div><div class="line">Department Supervisor</div><div class="dt">Name / Date</div></div>' +
+    '<div><div class="line">Inventory Controller</div><div class="dt">Name / Date</div></div></div>';
+
+  $('previewBody').innerHTML = html;
+  $('printOnly').innerHTML = html;
+  $('preview').classList.remove('hide');
+  $('printBtn').disabled = !rows.length;
+}
+
+// refresh the printing time right before the dialog opens
+window.addEventListener('beforeprint', () => {
+  const m = $('printOnly').querySelector('.meta');
+  if (m && m.children[3]) m.children[3].innerHTML = '<b>Printing Time:</b> ' + esc(nowFull().slice(0, 16));
+});
+
+
+/* ---- button click effect (ripple + press + tiny vibration on phones) ---- */
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('button');
+  if (!b || b.disabled) return;
+  const r = b.getBoundingClientRect(), size = Math.max(r.width, r.height);
+  const d = document.createElement('span');
+  d.className = 'ripple';
+  d.style.width = d.style.height = size + 'px';
+  d.style.left = (e.clientX - r.left - size / 2) + 'px';
+  d.style.top = (e.clientY - r.top - size / 2) + 'px';
+  b.appendChild(d);
+  setTimeout(() => d.remove(), 600);
+  if (navigator.vibrate) navigator.vibrate(12);
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
