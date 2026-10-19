@@ -48,6 +48,9 @@
   .e3 button{width:auto;margin:0;padding:8px 14px;font-size:13px}
   .small{font-size:12px;color:#6b7280;margin-top:8px}
 
+  .userbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px;font-weight:bold}
+  .userbar button{width:auto;margin:0;padding:6px 14px;font-size:13px}
+  button.on{background:#16a34a}button.off{background:#dc2626}
   /* tabs */
   .tabs{display:flex;gap:6px;margin-bottom:10px;background:#e2e8f0;padding:4px;border-radius:10px}
   .tabs button{margin:0;padding:10px 4px;font-size:13px;background:transparent;color:#475569;border-radius:8px}
@@ -113,7 +116,7 @@
     <h1>Store Inventory</h1>
     <div class="sub">Please log in</div>
     <label>User ID</label>
-    <input id="uid" inputmode="numeric" autocomplete="off">
+    <input id="uid" type="text" inputmode="text" autocapitalize="none" autocorrect="off" autocomplete="off">
     <label>Password</label>
     <input id="pwd" type="password" inputmode="numeric" autocomplete="off">
     <button id="loginBtn" onclick="doLogin()">Login</button>
@@ -123,8 +126,10 @@
   <!-- APP -->
   <div id="appView" class="hide">
 
+    <div class="userbar"><span id="whoTxt"></span><button class="secondary" onclick="logout()">Logout</button></div>
     <div class="tabs">
       <button class="active" data-tab="count" onclick="showTab('count')">Count</button>
+      <button class="hide" data-tab="control" onclick="showTab('control')">Control</button>
       <button data-tab="saved" onclick="showTab('saved')">Saved</button>
       <button data-tab="articles" onclick="showTab('articles')">Articles</button>
       <button data-tab="print" onclick="showTab('print')">Print</button>
@@ -138,13 +143,14 @@
     <!-- TAB: COUNT -->
     <div id="tab-count" class="tabpane active">
       <div class="card">
-        <div class="top"><h1>Stock Count</h1><button class="secondary" onclick="logout()">Logout</button></div>
+        <h1>Stock Count</h1>
         <div class="sub">Enter Article / PLU code, then press Enter</div>
         <div class="small" id="artStatus" style="margin:-8px 0 8px"></div>
+        <div id="invBanner" class="msg info"></div>
 
         <label>Article / PLU Code</label>
         <input id="code" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter'){lookup()}">
-        <button class="secondary" onclick="lookup()">Search</button>
+        <button id="searchBtn" class="secondary" onclick="lookup()">Search</button>
 
         <label>Description</label>
         <input id="desc" readonly>
@@ -162,11 +168,24 @@
       </div>
     </div>
 
+    <!-- TAB: ADMIN CONTROL -->
+    <div id="tab-control" class="tabpane">
+      <div class="card">
+        <h1>Inventory Control</h1>
+        <div class="sub">When ON, plant users can add and edit entries. It stays ON even after you log out, until you log in again and turn it OFF.</div>
+        <div id="invState" class="syncbar bad" style="font-size:16px;font-weight:bold;justify-content:center">Inventory is OFF</div>
+        <button id="invBtn" class="on" onclick="toggleInv()">Turn ON</button>
+        <div id="invMsg" class="msg"></div>
+      </div>
+    </div>
+
     <!-- TAB: SAVED ENTRIES -->
     <div id="tab-saved" class="tabpane">
       <div class="card">
         <div class="top"><b style="font-size:15px">Saved entries</b></div>
         <div class="small" id="count"></div>
+        <div id="plantRow" class="hide"><label>Plant</label><select id="qPlant" style="font-size:15px;padding:10px" onchange="savedShown=100;renderList()"></select>
+          <div id="removeBox" style="margin-top:6px"><button id="removeAllBtn" class="off" onclick="removeAll('')">Remove all articles - All Plants</button><div id="removePlants" class="filters" style="margin-top:8px"></div></div></div>
         <div class="listhead" style="margin-top:8px">
           <input id="q" placeholder="Search article / description" autocomplete="off">
           <button class="secondary" onclick="loadList(true)">Refresh</button>
@@ -200,6 +219,7 @@
         <div class="filters" style="margin-top:8px">
           <div><label>From date</label><input type="date" id="pFrom"></div>
           <div><label>To date</label><input type="date" id="pTo"></div>
+          <div class="full"><label>Plant</label><select id="pPlant"></select></div>
           <div class="full"><label>Department</label>
             <select id="pDept"><option value="">All departments</option></select></div>
         </div>
@@ -222,10 +242,11 @@
 
 <script>
 // ====== SETTINGS (change here) ======
-const USER_ID  = '4622';
-const PASSWORD = '4622';
+const USERS = { '4620': '4620', '4621': '4621', '4622': '4622', '4623': '4623' };   // user id : password (user id = plant)
+const PLANTS = Object.keys(USERS);
+const ADMIN_ID = 'admin', ADMIN_PASS = '4237';
 // Paste the Web app link from Apps Script (Deploy > Manage deployments > Web app URL, ends with /exec)
-const API_URL  = 'https://script.google.com/macros/s/AKfycbybMIre7i3lSRLkkqFKWpRflMVJC0-RvefSbL3jT9fg_vgV7mddGBNivE8X9WT6M-ck7w/exec';
+const API_URL  = 'https://script.google.com/macros/s/AKfycbyT3W0BpZEYYqQe-pXq63JyTE8OEa8om3kJobbKe_MKHk3ZXt7XscXB8iO2aByhcLkTkQ/exec';
 // ====================================
 
 /*
@@ -236,7 +257,7 @@ const API_URL  = 'https://script.google.com/macros/s/AKfycbybMIre7i3lSRLkkqFKWpR
     If the internet is slow or off, nothing is lost: it uploads when the connection is back.
 */
 
-let loggedIn = false, current = null;
+let loggedIn = false, current = null, isAdmin = false, plant = '', invOn = false;
 let entries = [];            // saved counts (newest first). {cid, article, description, uom, department, mc, qty, when, row, synced, error}
 let queue = [];              // waiting uploads: {op:'save',cid} or {op:'update',article,when,qty,row}
 let articles = [], artMap = {}, articlesLoaded = false, artShown = 100, artMatches = [];
@@ -248,8 +269,12 @@ function hideMsg() { $('msg').style.display = 'none'; }
 function errText(e) { return (e && e.message ? e.message : String(e)).replace('Error: ', ''); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function pad(n) { return String(n).padStart(2, '0'); }
-function nowFull() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
-function todayStr() { return nowFull().slice(0, 10); }
+function nowFull() { const d = new Date(); let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(h) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ' ' + ap; }
+function nowShort() { return nowFull().replace(/:\d\d (AM|PM)$/, ' $1'); }
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function wkey(w) { const m = /^(\d{4}-\d\d-\d\d) (\d+):(\d\d):(\d\d)(?: (AM|PM))?/.exec(String(w || '')); if (!m) return String(w || ''); let h = +m[2]; if (m[5]) { h = h % 12; if (m[5] === 'PM') h += 12; } return m[1] + ' ' + pad(h) + ':' + m[3] + ':' + m[4]; }
+function fmtWhen(w) { const m = /^(\d{4}-\d\d-\d\d) (\d\d):(\d\d):(\d\d)$/.exec(wkey(w)); if (!m) return String(w || ''); let h = +m[2]; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return m[1] + ' ' + pad(h) + ':' + m[3] + ':' + m[4] + ' ' + ap; }
+function visible(e) { return isAdmin || e.plant === plant; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
 /* ---- device storage ---- */
@@ -327,30 +352,80 @@ function showTab(name) {
 
 /* ---- login (checked in this page) ---- */
 function doLogin() {
-  if ($('uid').value.trim() === USER_ID && $('pwd').value === PASSWORD) {
-    loggedIn = true;
-    $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
-    $('code').focus();
-    startApp();
-  } else show($('loginMsg'), 'Wrong User ID or Password.', 'err');
+  const u = $('uid').value.trim(), p = $('pwd').value;
+  if (u.toLowerCase() === ADMIN_ID && p === ADMIN_PASS) { isAdmin = true; plant = ''; }
+  else if (Object.prototype.hasOwnProperty.call(USERS, u) && USERS[u] === p) { isAdmin = false; plant = u; }
+  else { show($('loginMsg'), 'Wrong User ID or Password.', 'err'); return; }
+  loggedIn = true;
+  $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
+  $('whoTxt').textContent = isAdmin ? 'Admin' : 'Plant ' + plant;
+  document.querySelector('[data-tab=count]').classList.toggle('hide', isAdmin);
+  document.querySelector('[data-tab=control]').classList.toggle('hide', !isAdmin);
+  setupPlants();
+  showTab(isAdmin ? 'control' : 'count');
+  startApp();
 }
 $('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 function logout() { loggedIn = false; location.reload(); }
 
+function setupPlants() {
+  const opts = PLANTS.map(p => '<option>' + p + '</option>').join('');
+  $('qPlant').innerHTML = '<option value="">All plants</option>' + opts;
+  $('pPlant').innerHTML = isAdmin ? '<option value="">All plants</option>' + opts : '<option>' + plant + '</option>';
+  if (!isAdmin) $('pPlant').value = plant;
+  $('pPlant').disabled = !isAdmin;
+  $('plantRow').classList.toggle('hide', !isAdmin);
+  updRemoveBtn();
+}
+
+/* ---- inventory ON / OFF (kept on the server, so it survives logout) ---- */
+let lastArtErr = '', invShown = null, articlesVer = '', loadingArt = false;
+function applyInv() {
+  const on = invOn;
+  $('invState').className = 'syncbar ' + (on ? 'good' : 'bad');
+  $('invState').textContent = 'Inventory is ' + (on ? 'ON' : 'OFF');
+  $('invBtn').textContent = on ? 'Turn OFF' : 'Turn ON';
+  $('invBtn').className = on ? 'off' : 'on';
+  if (!isAdmin) {
+    if (on) $('invBanner').style.display = 'none';
+    else show($('invBanner'), 'Inventory is OFF. Entry and editing are locked until Admin turns it ON.', 'info');
+    $('code').disabled = !on; $('searchBtn').disabled = !on;
+    $('qty').disabled = !on || !current; $('saveBtn').disabled = !on || !current;
+  }
+  if (invShown !== on) { invShown = on; renderListIfVisible(); }
+}
+async function fetchStatus() {
+  try { const r = await apiGet({ action: 'status' }); invOn = !!r.on; if (r.ver && articlesVer && r.ver !== articlesVer && !loadingArt) loadArticles(true, true); try { localStorage.setItem('inv_on', invOn ? '1' : '0'); } catch (e) {} } catch (e) {}
+  applyInv();
+}
+async function toggleInv() {
+  const want = !invOn, b = $('invBtn'); b.disabled = true;
+  try {
+    await apiPost({ action: 'setStatus', pass: ADMIN_PASS, on: want });
+    invOn = want; try { localStorage.setItem('inv_on', want ? '1' : '0'); } catch (e) {}
+    show($('invMsg'), 'Inventory turned ' + (want ? 'ON' : 'OFF') + '.', 'ok');
+  } catch (e) { show($('invMsg'), errText(e), 'err'); }
+  b.disabled = false; applyInv();
+}
+
 function startApp() {
   loadLocal();
-  entries.forEach(e => { if (!e.synced && !e.error && !queue.some(q => q.op === 'save' && q.cid === e.cid)) queue.push({ op: 'save', cid: e.cid }); });
+  try { invOn = localStorage.getItem('inv_on') === '1'; } catch (e) {}
+  applyInv(); fetchStatus();
+  setInterval(() => { if (loggedIn) fetchStatus(); }, 15000);
+  if (!isAdmin) entries.forEach(e => { if (e.plant === plant && !e.synced && !e.error && !queue.some(q => q.op === 'save' && q.cid === e.cid)) queue.push({ op: 'save', cid: e.cid }); });
+  if (isAdmin) queue = [];
   fillDeptLists(); renderArticles(); renderList(); updateSyncUI(); setArtStatus();
-  loadArticles(true, true);          // refresh article list in the background
-  loadList(false);                   // upload anything waiting, then refresh saved list
+  loadArticles(true, true);
+  loadList(false);
   setInterval(() => { if (queue.length) sync(); }, 20000);
-  apiGet({ action: 'ping' }).catch(() => {});                                   // wake the sheet script now
-  setInterval(() => { apiGet({ action: 'ping' }).catch(() => {}); }, 170000);  // and keep it awake
+  apiGet({ action: 'ping' }).catch(() => {});
+  setInterval(() => { apiGet({ action: 'ping' }).catch(() => {}); }, 170000);
   window.addEventListener('online', () => sync());
 }
 
 function setArtStatus() {
-  $('artStatus').textContent = articlesLoaded
+  $('artStatus').textContent = lastArtErr ? 'Article list not refreshed: ' + lastArtErr : articlesLoaded
     ? articles.length + ' articles ready on this device - search is instant'
     : 'Loading articles...';
 }
@@ -364,10 +439,12 @@ function clearItem() {
 
 async function lookup() {
   hideMsg();
+  if (!invOn) { show($('msg'), 'Inventory is OFF. Entry is locked.', 'err'); return; }
   const c = $('code').value.trim();
   if (!c) return;
   clearItem();
   let item = artMap[c];
+  if (!item && articlesLoaded) { $('artStatus').textContent = 'Checking sheet for new articles...'; await loadArticles(true, true); item = artMap[c]; }
   let existing = null;
   if (!item && !articlesLoaded) {           // first run, list not on device yet: ask the sheet
     try {
@@ -375,20 +452,21 @@ async function lookup() {
       if (r.found) item = r.item;
     } catch (e) { show($('msg'), errText(e), 'err'); return; }
   }
-  if (!item) { show($('msg'), 'Article / PLU not found. If it is new, open the Articles tab and press Refresh.', 'err'); $('code').select(); return; }
+  if (!item) { show($('msg'), lastArtErr ? 'Article not found, and the article list could not be refreshed: ' + lastArtErr : 'Article / PLU not found.', 'err'); $('code').select(); return; }
   current = item;
   $('desc').value = item.description; $('uom').value = item.uom; $('dept').value = item.department;
   $('qty').disabled = false; $('saveBtn').disabled = false; $('qty').focus();
-  existing = entries.find(en => en.article === item.article);
-  if (existing) show($('msg'), 'Already saved: ' + existing.qty + ' ' + existing.uom + ' (' + existing.when + '). Saving adds a new entry - to change the old one use the "Saved" tab.', 'info');
+  existing = entries.find(en => en.article === item.article && en.plant === plant);
+  if (existing) show($('msg'), 'Already saved: ' + existing.qty + ' ' + existing.uom + ' (' + fmtWhen(existing.when) + '). Saving adds a new entry - to change the old one use the "Saved" tab.', 'info');
 }
 
 function save() {
-  if (!loggedIn || !current) return;
+  if (!loggedIn || !current || isAdmin) return;
+  if (!invOn) { show($('msg'), 'Inventory is OFF. Entry is locked.', 'err'); return; }
   const q = $('qty').value;
   if (q === '' || Number(q) < 0) { show($('msg'), 'Enter a valid quantity.', 'err'); return; }
   const en = {
-    cid: uid(), article: current.article, description: current.description, uom: current.uom,
+    cid: uid(), plant: plant, article: current.article, description: current.description, uom: current.uom,
     department: current.department, mc: current.mc || '', qty: Number(q), when: nowFull(),
     row: null, synced: false, error: ''
   };
@@ -422,19 +500,19 @@ async function sync(manual) {
           used++;
         }
         if (batch.length) {
-          const r = await apiPost({ action: 'saveBatch', entries: batch.map(b => ({ article: b.en.article, qty: b.sentQty, when: b.en.when, description: b.en.description, uom: b.en.uom, department: b.en.department, mc: b.en.mc })) });
+          const r = await apiPost({ action: 'saveBatch', entries: batch.map(b => ({ plant: b.en.plant, article: b.en.article, qty: b.sentQty, when: b.en.when, description: b.en.description, uom: b.en.uom, department: b.en.department, mc: b.en.mc })) });
           batch.forEach((b, k) => {
             const res = r.results[k];
             if (res && res.ok) {
               b.en.synced = true; b.en.error = ''; b.en.row = res.entry.row;
-              if (b.en.qty !== b.sentQty) queue.push({ op: 'update', article: b.en.article, when: b.en.when, qty: b.en.qty, row: b.en.row });
+              if (b.en.qty !== b.sentQty) queue.push({ op: 'update', plant: b.en.plant, article: b.en.article, when: b.en.when, qty: b.en.qty, row: b.en.row });
             } else { b.en.error = (res && res.error) || 'Not saved'; }
           });
         }
         queue.splice(0, used);
       } else {
         try {
-          await apiPost({ action: 'update', article: first.article, when: first.when, qty: first.qty, row: first.row });
+          await apiPost({ action: 'update', plant: first.plant, article: first.article, when: first.when, qty: first.qty, row: first.row });
         } catch (e) {
           if (e.net) throw e;
           const en = entries.find(x => x.article === first.article && x.when === first.when);
@@ -473,13 +551,13 @@ async function loadList(manual) {
   if (queue.length) { if (manual) show($('listMsg'), 'Some entries are still waiting to upload - list not refreshed yet.', 'info'); return; }
   const before = changeCounter;
   try {
-    const r = await apiGet({ action: 'list', q: '', all: '1' });
+    const r = await apiGet({ action: 'list', q: '', all: '1', plant: isAdmin ? '' : plant });
     if (changeCounter !== before) return;        // something changed while loading; keep the newer local data
     const server = (r.entries || []).map(e => ({
-      cid: 'srv|' + e.row, article: e.article, description: e.description, uom: e.uom,
+      cid: 'srv|' + e.row, plant: String(e.plant || ''), article: e.article, description: e.description, uom: e.uom,
       department: e.department, mc: e.mc || '', qty: e.qty, when: e.when, row: e.row, synced: true, error: ''
     }));
-    entries = entries.filter(e => !e.synced).concat(server);
+    entries = entries.filter(e => !e.synced && (isAdmin ? false : e.plant === plant)).concat(server);
     persist(); fillDeptLists(); renderList(); updateSyncUI();
   } catch (e) { if (manual) show($('listMsg'), errText(e), 'err'); }
 }
@@ -490,7 +568,9 @@ function renderListIfVisible() { if ($('tab-saved').classList.contains('active')
 
 function renderList() {
   const term = $('q').value.trim().toLowerCase();
-  const rows = term ? entries.filter(e => String(e.article).toLowerCase().includes(term) || String(e.description).toLowerCase().includes(term)) : entries;
+  let base = entries.filter(visible);
+  if (isAdmin && $('qPlant').value) base = base.filter(e => e.plant === $('qPlant').value);
+  const rows = term ? base.filter(e => String(e.article).toLowerCase().includes(term) || String(e.description).toLowerCase().includes(term)) : base;
   const box = $('list');
   box.textContent = '';
   $('count').textContent = rows.length + ' saved entr' + (rows.length === 1 ? 'y' : 'ies') + (rows.length > savedShown ? ' (showing latest ' + savedShown + ')' : '');
@@ -508,15 +588,49 @@ function entryEl(en) {
   const right = document.createElement('div'); right.style.whiteSpace = 'nowrap'; right.textContent = en.qty + ' ' + en.uom;
   e1.append(left, right);
   const e2 = document.createElement('div'); e2.className = 'e2';
-  e2.append(en.when + (en.department ? ' · ' + en.department : ''));
+  e2.append((en.plant ? 'Plant ' + en.plant + ' · ' : '') + fmtWhen(en.when) + (en.department ? ' · ' + en.department : ''));
   if (en.error) { const s = document.createElement('span'); s.className = 'failtag'; s.textContent = ' · NOT SAVED: ' + en.error; e2.appendChild(s); }
   else if (!en.synced) { const s = document.createElement('span'); s.className = 'pendtag'; s.textContent = ' · waiting to upload'; e2.appendChild(s); }
   const e3 = document.createElement('div'); e3.className = 'e3';
-  const edit = document.createElement('button'); edit.className = 'secondary'; edit.textContent = 'Change quantity'; edit.style.marginTop = '0';
-  edit.onclick = () => editMode(wrap, en);
-  e3.appendChild(edit);
+  if (isAdmin) {
+    const del = document.createElement('button'); del.className = 'off'; del.textContent = 'Delete'; del.style.marginTop = '0';
+    del.onclick = () => deleteEntry(en, del);
+    e3.appendChild(del);
+  } else if (invOn) {
+    const edit = document.createElement('button'); edit.className = 'secondary'; edit.textContent = 'Change quantity'; edit.style.marginTop = '0';
+    edit.onclick = () => editMode(wrap, en);
+    e3.appendChild(edit);
+  } else {
+    const n = document.createElement('div'); n.className = 'small'; n.style.marginTop = '0'; n.textContent = 'Inventory is OFF - editing locked'; e3.appendChild(n);
+  }
   wrap.append(e1, e2, e3);
   return wrap;
+}
+
+async function updRemoveBtn() { $('removePlants').innerHTML = PLANTS.map(p => '<button class="off" style="margin-top:0" onclick="removeAll(\'' + p + '\')">Remove Plant ' + p + '</button>').join(''); }
+async function removeAll(p) {
+  p = p || ''; const label = p ? 'Plant ' + p : 'ALL plants';
+  if (!confirm('Permanently delete ALL saved entries of ' + label + ' from the sheet?\nThis cannot be undone.')) return;
+  if ((prompt('Type DELETE to confirm removing all entries of ' + label) || '').trim().toUpperCase() !== 'DELETE') return;
+  const b = $('removeBox'); b.style.opacity = '.5'; b.style.pointerEvents = 'none';
+  try {
+    await apiPost({ action: 'deleteAll', pass: ADMIN_PASS, plant: p });
+    entries = entries.filter(e => p ? e.plant !== p : false);
+    changeCounter++; persist(); renderList();
+    show($('listMsg'), 'All entries of ' + label + ' removed.', 'ok');
+  } catch (e) { show($('listMsg'), errText(e), 'err'); }
+  b.style.opacity = ''; b.style.pointerEvents = '';
+}
+async function deleteEntry(en, btn) {
+  if (!confirm('Permanently delete this entry?\nPlant ' + en.plant + ' - Article ' + en.article + ' - Qty ' + en.qty)) return;
+  btn.disabled = true;
+  try {
+    if (en.synced) await apiPost({ action: 'delete', pass: ADMIN_PASS, plant: en.plant, article: en.article, when: en.when, row: en.row });
+    else queue = queue.filter(q => q.cid !== en.cid);
+    entries = entries.filter(x => x !== en);
+    changeCounter++; persist(); renderList();
+    if (en.synced) loadList(false);
+  } catch (e) { btn.disabled = false; show($('listMsg'), errText(e), 'err'); }
 }
 
 function editMode(wrap, en) {
@@ -526,10 +640,11 @@ function editMode(wrap, en) {
   const cancel = document.createElement('button'); cancel.className = 'secondary'; cancel.textContent = 'Cancel'; cancel.style.marginTop = '0';
   const note = document.createElement('div'); note.className = 'small'; note.style.marginTop = '0';
   const doSave = () => {
+    if (!invOn) { note.textContent = 'Inventory is OFF. Editing locked.'; return; }
     if (inp.value === '' || Number(inp.value) < 0) { note.textContent = 'Enter a valid quantity.'; return; }
     const nq = Number(inp.value);
     en.qty = nq;
-    if (en.synced) queue.push({ op: 'update', article: en.article, when: en.when, qty: nq, row: en.row });
+    if (en.synced) queue.push({ op: 'update', plant: en.plant, article: en.article, when: en.when, qty: nq, row: en.row });
     changeCounter++; persist(); renderList(); updateSyncUI(); syncSoon();
   };
   ok.onclick = doSave; cancel.onclick = () => renderList();
@@ -552,10 +667,13 @@ function fillDeptLists() {
 }
 
 async function loadArticles(force, quiet) {
+  loadingArt = true;
   $('artMsg').style.display = 'none';
   if (!articlesLoaded) $('artCount').textContent = 'Loading articles...';
   try {
     const r = await apiGet({ action: 'articles' });
+    if (r.ver) articlesVer = r.ver;
+    lastArtErr = '';
     setArticles((r.items || r.articles || []).map(a => ({
       article: String(a.article), description: String(a.description || ''), uom: String(a.uom || ''),
       department: String(a.department || ''), mc: String(a.mc || ''), plu: String(a.plu || '')
@@ -563,8 +681,10 @@ async function loadArticles(force, quiet) {
     persistArticles(); fillDeptLists(); renderArticles(); setArtStatus();
   } catch (e) {
     if (!articlesLoaded) $('artCount').textContent = '';
+    lastArtErr = errText(e);
     if (!quiet) show($('artMsg'), errText(e), 'err');
   }
+  loadingArt = false;
 }
 
 function renderArticles(keepShown) {
@@ -597,15 +717,16 @@ $('adept').addEventListener('change', () => renderArticles());
 function buildPrint() {
   $('pMsg').style.display = 'none';
   const from = $('pFrom').value, to = $('pTo').value, dept = $('pDept').value;
+  const pl = isAdmin ? $('pPlant').value : plant;
   if (from && to && from > to) { show($('pMsg'), 'From date is after To date.', 'err'); return; }
 
   const rows = entries.filter(en => {
     const day = String(en.when || '').slice(0, 10);
-    return !en.error && (!from || day >= from) && (!to || day <= to) && (!dept || en.department === dept);
+    return !en.error && visible(en) && (!pl || en.plant === pl) && (!from || day >= from) && (!to || day <= to) && (!dept || en.department === dept);
   }).sort((a, b) =>
     (a.department || '').localeCompare(b.department || '') ||
     String(a.article).localeCompare(String(b.article)) ||
-    String(a.when).localeCompare(String(b.when)));
+    wkey(a.when).localeCompare(wkey(b.when)));
 
   const waiting = rows.filter(e => !e.synced).length;
   if (waiting) show($('pMsg'), waiting + ' of these entries are not uploaded to the sheet yet (they are included in the printout).', 'info');
@@ -614,14 +735,14 @@ function buildPrint() {
   const range = (from || '...') + (to && to !== from ? ' to ' + to : '');
   const body = rows.map((en, i) =>
     '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(en.article) + '</td><td>' + esc(en.description) +
-    '</td><td class="n">' + esc(en.qty) + ' ' + esc(en.uom) + '</td><td>' + esc(en.when) + '</td></tr>').join('');
+    '</td><td class="n">' + esc(en.qty) + ' ' + esc(en.uom) + '</td><td>' + esc(fmtWhen(en.when)) + '</td></tr>').join('');
 
   const html =
     '<h2>Physical Inventory Data</h2>' +
-    '<div class="meta"><div><b>Date:</b> ' + esc(range) + '</div>' +
+    '<div class="meta"><div><b>Plant:</b> ' + esc(pl || 'All') + '</div><div><b>Date:</b> ' + esc(range) + '</div>' +
     '<div><b>Department:</b> ' + esc(dept || 'All') + '</div>' +
     '<div><b>Total Articles:</b> ' + uniq + (rows.length !== uniq ? ' (' + rows.length + ' entries)' : '') + '</div>' +
-    '<div><b>Printing Time:</b> ' + esc(nowFull().slice(0, 16)) + '</div></div>' +
+    '<div><b>Printing Time:</b> ' + esc(nowShort()) + '</div></div>' +
     '<table><thead><tr><th class="n">#</th><th>Article</th><th>Article Description</th><th class="n">Physical Quantity</th><th>Scanning Time</th></tr></thead><tbody>' +
     (body || '<tr><td colspan="5" style="text-align:center">No entries for this selection</td></tr>') +
     '</tbody></table>' +
@@ -637,7 +758,7 @@ function buildPrint() {
 // refresh the printing time right before the dialog opens
 window.addEventListener('beforeprint', () => {
   const m = $('printOnly').querySelector('.meta');
-  if (m && m.children[3]) m.children[3].innerHTML = '<b>Printing Time:</b> ' + esc(nowFull().slice(0, 16));
+  if (m && m.children[4]) m.children[4].innerHTML = '<b>Printing Time:</b> ' + esc(nowShort());
 });
 
 
